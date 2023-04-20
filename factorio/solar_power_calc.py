@@ -1,6 +1,7 @@
 from math import ceil
 from os import get_terminal_size, name, system
 
+
 def clear():
     if name == "nt":
         _ = system("cls")
@@ -9,7 +10,7 @@ def clear():
 
 
 def power_calculation(_users) -> dict:
-    
+
     if type(_users) is not list:
         facility_power = _users
     else:
@@ -18,54 +19,87 @@ def power_calculation(_users) -> dict:
             facility_power += i[0]["power"] * i[1]
         facility_power = round(facility_power, 3)  # MW/sec
 
-    facility_night_req = facility_power * (TOD["night"] + TOD["transition"])  # MJ for night running
-    
-    additional_power = round(facility_night_req / (TOD["midday"] + TOD["transition"]), 3)
+    # MJ for night running
+    facility_night_req = facility_power * (TOD["night"] + TOD["transition"])
+
+    additional_power = round(
+        facility_night_req / (TOD["midday"] + TOD["transition"]), 3)
 
     total_power = facility_power + additional_power
 
     # round power production to whole number of solar panels
     if total_power % ELECTRICITY["solar_panel"]["power"]:
-        total_power = round(ELECTRICITY["solar_panel"]["power"] * ceil(total_power / ELECTRICITY["solar_panel"]["power"]), 3)
+        total_power = round(ELECTRICITY["solar_panel"]["power"]
+                            * ceil(total_power
+                            / ELECTRICITY["solar_panel"]["power"]), 3)
         additional_power = round(total_power - facility_power, 3)
 
     power_add_to_max_ratio = additional_power / total_power
 
-    # power production during day is not 100%, it is linearly grows and falls during sunrise and sunset accordingly
-    # only free power directed to the accumulators, thereforce, charging process starts only when
-    # produced power > consumed power, and grows to 100% linearly too, until sunrise is over (or falls to 0% in sunset)
-    energy_produced = additional_power * (TOD["midday"] + power_add_to_max_ratio * TOD["transition"]) / TICKS_PER_SECOND
-    energy_consumed = facility_power * (TOD["night"] + (1 - power_add_to_max_ratio) * TOD["transition"]) / TICKS_PER_SECOND
+    # Power production during day is not 100%, it is linearly grows
+    # and falls during sunrise and sunset accordingly
+    # only free power directed to the accumulators, thereforce,
+    # charging process starts only when produced power > consumed power,
+    # and grows to 100% linearly too,
+    # until sunrise is over (or falls to 0% in sunset)
+    energy_produced = additional_power \
+        * (TOD["midday"] + power_add_to_max_ratio * TOD["transition"]) \
+        / TICKS_PER_SECOND
+    energy_consumed = facility_power \
+        * (TOD["night"] + (1 - power_add_to_max_ratio) * TOD["transition"]) \
+        / TICKS_PER_SECOND
 
     return {
         "power": {
-            "units": ceil(round(total_power / ELECTRICITY["solar_panel"]["power"], 3)),
+            "units": ceil(round(total_power
+                                / ELECTRICITY["solar_panel"]["power"], 3)),
             "total": total_power,
             "facility": facility_power,
             "storage": round(max(total_power - facility_power, 0), 3)
         },
         "energy": {
             "cons": round(energy_consumed, 3),
-            "cons_units": ceil(round(energy_consumed / ELECTRICITY["accumulator"]["energy"], 3)),
+            "cons_units": ceil(
+                round(energy_consumed
+                      / ELECTRICITY["accumulator"]["energy"], 3)),
             "prod": round(energy_produced, 3),
-            "prod_units": ceil(round(energy_produced / ELECTRICITY["accumulator"]["energy"], 3))
+            "prod_units": ceil(
+                round(energy_produced
+                      / ELECTRICITY["accumulator"]["energy"], 3))
         }
     }
 
+
 def output(power_calculation_result):
-    print(f'Target power consumption:  {power_calculation_result["power"]["facility"]} MW/s')
+    print(
+        f'Target power consumption:  '
+        f'{power_calculation_result["power"]["facility"]} MW/s'
+        )
     print(f'Powering:')
-    print(f'  total:\t{power_calculation_result["power"]["total"]:5} MW/sec ({power_calculation_result["power"]["units"]} solar panels)')
-    print(f'  facility:\t{power_calculation_result["power"]["facility"]:5} MW/sec')
-    print(f'  storage:\t{power_calculation_result["power"]["storage"]:5} MW/sec')
+    print(
+        f'  total:\t{power_calculation_result["power"]["total"]:5} MW/sec'
+        f' ({power_calculation_result["power"]["units"]} solar panels)'
+        )
+    print(
+        f'  facility:\t{power_calculation_result["power"]["facility"]:5}'
+        f'MW/sec'
+        )
+    print(
+        f'  storage:\t{power_calculation_result["power"]["storage"]:5} MW/sec'
+        )
     print('Energy')
-    print(f'  produced:\t{power_calculation_result["energy"]["prod"]} MJ ({power_calculation_result["energy"]["prod_units"]} accumulators)')
-    print(f'  consumed:\t{power_calculation_result["energy"]["cons"]} MJ ({power_calculation_result["energy"]["cons_units"]} accumulators)')
+    print(
+        f'  produced:\t{power_calculation_result["energy"]["prod"]} MJ'
+        f' ({power_calculation_result["energy"]["prod_units"]} accumulators)'
+        )
+    print(
+        f'  consumed:\t{power_calculation_result["energy"]["cons"]} MJ'
+        f' ({power_calculation_result["energy"]["cons_units"]} accumulators)'
+        )
     print()
 
 
-
-# constants
+# Constants
 TICKS_PER_SECOND = 60
 TOD = {
     "cycle": 25000,      # 100
@@ -106,7 +140,10 @@ if __name__ == "__main__":
             else:
                 try:
                     clear()
-                    result = power_calculation(max(ELECTRICITY["solar_panel"]["power"], float(intext)))
+                    result = power_calculation(
+                        max(ELECTRICITY["solar_panel"]["power"],
+                            float(intext))
+                        )
                     output(result)
 
                 except ValueError:
